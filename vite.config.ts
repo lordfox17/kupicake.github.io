@@ -4,8 +4,9 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const isGithubActions = process.env.GITHUB_ACTIONS === 'true' || process.env.GITHUB_PAGES === 'true';
   return {
-    base: '',
+    base: isGithubActions ? '/kupicake.github.io/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
