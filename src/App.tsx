@@ -10,10 +10,24 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [isSoundOn, setIsSoundOn] = useState(false);
+  const [isSoundOn, setIsSoundOn] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [windowHeight, setWindowHeight] = useState(0);
+  const lenisRef = useRef<Lenis | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isSoundOn) {
+        audioRef.current.play().catch(() => {
+          setIsSoundOn(false);
+        });
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isSoundOn]);
 
   useEffect(() => {
     // Lenis Smooth Scroll Setup
@@ -22,12 +36,13 @@ export default function App() {
       wheelMultiplier: 0.6,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
+    lenisRef.current = lenis;
 
     function raf(time: number) {
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    const rafId = requestAnimationFrame(raf);
 
     setWindowHeight(window.innerHeight);
     const handleScroll = () => setScrollY(window.scrollY);
@@ -39,9 +54,23 @@ export default function App() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(rafId);
       lenis.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      lenisRef.current?.stop();
+    } else {
+      document.body.style.overflow = '';
+      lenisRef.current?.start();
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
 
   const isScrolled = scrollY > 115;
   const isAtBottom = windowHeight > 0 && typeof document !== 'undefined' ? (scrollY + windowHeight >= document.documentElement.scrollHeight - 50) : false;
@@ -100,7 +129,17 @@ export default function App() {
 
   return (
     <main className="bg-[#1c1c1c] flex flex-col gap-[1px] w-full min-h-screen font-sans">
+      <audio
+        ref={audioRef}
+        src="https://raw.githubusercontent.com/kupicake/database/main/main%20illus_hero%20section.webm"
+        loop
+      />
       
+      {/* MENU BACKDROP */}
+      <div 
+        className={`fixed inset-0 bg-black/40 backdrop-blur-md z-30 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+        onClick={() => setIsMenuOpen(false)}
+      />
 
       {/* CIRCULAR MENU */}
       <div 
@@ -154,23 +193,30 @@ export default function App() {
         </div>
 
         {/* Bottom Right - Sound */}
-        <div className="absolute bottom-0 right-0 w-[75px] md:w-[115px] h-[75px] md:h-[115px] flex items-center justify-center pointer-events-auto bg-transparent">
+        <div className="absolute bottom-0 right-0 w-[75px] md:w-[115px] h-[75px] md:h-[115px] flex items-center justify-center pointer-events-auto bg-transparent"
+             style={{ '--sp': `${Math.min(100, Math.max(0, (scrollY / (typeof window !== 'undefined' ? (window.innerWidth >= 768 ? 115 : 75) : 115)) * 100))}%` } as React.CSSProperties}
+        >
           <div 
               onClick={() => setIsSoundOn(!isSoundOn)}
-              className="-rotate-90 origin-center whitespace-nowrap text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.15em] cursor-pointer group flex items-center gap-1.5"
+              className="-rotate-90 origin-center cursor-pointer group grid relative"
           >
-              <span className="text-[#5A5957] transition-colors group-hover:text-[#8C8A87]">SOUND</span>
-              <div className="grid overflow-hidden">
-                <span 
-                  className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? '-translate-y-[150%] opacity-0' : 'translate-y-0 opacity-100'} text-[#E8E6E3] group-hover:text-[#F05C3B]`}
-                >
-                  OFF
-                </span>
-                <span 
-                  className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0'} text-[#F05C3B]`}
-                >
-                  ON
-                </span>
+              {/* Back Layer (Video Area - Light Color) */}
+              <div className="col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.15em]">
+                  <span className="text-[#c0c0c0] transition-colors group-hover:text-white">SOUND</span>
+                  <div className="grid overflow-hidden">
+                    <span className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? '-translate-y-[150%] opacity-0' : 'translate-y-0 opacity-100'} text-white group-hover:text-gray-200`}>OFF</span>
+                    <span className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0'} text-white group-hover:text-gray-200`}>ON</span>
+                  </div>
+              </div>
+
+              {/* Front Layer (Black Area - Gray Color) using Clip Path */}
+              <div className="col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.15em]"
+                   style={{ clipPath: 'inset(0 calc(100% - var(--sp)) 0 0)' }}>
+                  <span className="text-[#5A5957] transition-colors group-hover:text-[#8C8A87]">SOUND</span>
+                  <div className="grid overflow-hidden">
+                    <span className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? '-translate-y-[150%] opacity-0' : 'translate-y-0 opacity-100'} text-[#E8E6E3] group-hover:text-[#F05C3B]`}>OFF</span>
+                    <span className={`col-start-1 row-start-1 transition-all duration-500 ease-out ${isSoundOn ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0'} text-[#F05C3B]`}>ON</span>
+                  </div>
               </div>
           </div>
 
@@ -191,83 +237,99 @@ export default function App() {
       </div>
       
       {/* HERO SECTION */}
-      <div className="flex-none h-[100svh] w-full bg-[#1c1c1c] grid grid-cols-[75px_1fr_75px] md:grid-cols-[115px_1fr_115px] grid-rows-[75px_1fr_75px] md:grid-rows-[115px_1fr_115px] gap-[1px]">
-      
-      {/* Top Left - Logo (Moved to fixed) */}
-      <div className="bg-black" />
-
-      {/* Top Center - Name */}
-      <div className="bg-black relative flex flex-col items-center justify-end pb-6 md:pb-8">
-        {/* In a grid style, we often wrap text tightly */}
-        <div className="border border-[#1c1c1c] px-6 py-2 md:px-8 md:py-3 rounded-full uppercase tracking-[0.4em] md:tracking-[0.6em] text-[10px] md:text-xs font-semibold text-[#8C8A87] hover:text-[#E8E6E3] transition-colors cursor-default">
-          KUPI CAKE
-        </div>
-      </div>
-
-      {/* Top Right - Navigation */}
-      <div className="bg-black flex flex-col items-center justify-center relative">
-        <div className="flex flex-col items-start gap-1.5 md:gap-2.5 z-10">
-           {['About', 'Work', 'Contact'].map((item, idx) => (
-              <a 
-                key={item} 
-                href="#" 
-                className={`text-[8px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em] font-bold uppercase transition-colors flex items-center gap-1.5 md:gap-2 group ${
-                  idx === 0 ? 'text-[#E8E6E3]' : 'text-[#5A5957] hover:text-[#E8E6E3]'
-                }`}
-              >
-                  <div className={`h-[1px] bg-current transition-all ${idx === 0 ? 'w-2 md:w-3' : 'w-0 group-hover:w-2 md:group-hover:w-3'}`} />
-                  <span>{item}</span>
-              </a>
-           ))}
-        </div>
-      </div>
-
-      {/* Center Left - Social Media */}
-      <div className="bg-black flex flex-col items-center justify-center gap-8 md:gap-10">
-        {[
-          { Icon: Dribbble, label: 'Dribbble' },
-          { Icon: Instagram, label: 'Instagram' },
-          { Icon: Play, label: 'Play', className: 'fill-current' },
-          { Icon: Linkedin, label: 'LinkedIn' }
-        ].map(({ Icon, label, className }) => (
-          <a 
-            key={label}
-            href="#" 
-            aria-label={label}
-            className="text-[#5A5957] hover:text-[#E8E6E3] transition-all hover:scale-110"
-          >
-            <Icon className={`w-4 h-4 md:w-5 md:h-5 ${className || ''}`} strokeWidth={2} />
-          </a>
-        ))}
-      </div>
-
-      {/* Center Main - Blank Area */}
-      <div className="bg-black relative overflow-hidden flex items-center justify-center group cursor-crosshair">
-        {/* Subtle grid crosshairs for detail */}
-        <div className="absolute top-1/4 left-1/4 w-3 h-3 md:w-4 md:h-4 border-l border-t border-[#1c1c1c] transition-opacity opacity-30 group-hover:opacity-100" />
-        <div className="absolute bottom-1/4 right-1/4 w-3 h-3 md:w-4 md:h-4 border-r border-b border-[#1c1c1c] transition-opacity opacity-30 group-hover:opacity-100" />
+      <div className="relative flex-none h-[100svh] w-full bg-black grid grid-cols-[75px_1fr_75px] md:grid-cols-[115px_1fr_115px] grid-rows-[75px_1fr_75px] md:grid-rows-[115px_1fr_115px] overflow-hidden">
         
-        {/* A completely blank center as requested */}
+        {/* Video Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <video 
+            src="https://raw.githubusercontent.com/kupicake/database/main/main%20illus_hero%20section.webm" 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover z-0 opacity-100 scale-105" 
+            style={{ transform: `translateY(${scrollY * 0.4}px)` }}
+          />
+        </div>
+
+        {/* Top Left - Logo (Moved to fixed) */}
+        <div className="relative z-10 border-b border-r border-white/20" />
+
+        {/* Top Center - Name */}
+        <div className="relative z-10 border-b border-white/20 flex flex-col items-center justify-end pb-6 md:pb-8">
+          <div className="border border-white/30 px-6 py-2 md:px-8 md:py-3 rounded-full uppercase tracking-[0.4em] md:tracking-[0.6em] text-[10px] md:text-xs font-extrabold text-white mix-blend-difference opacity-90 hover:opacity-100 transition-opacity cursor-default bg-white/20">
+            KUPI CAKE
+          </div>
+        </div>
+
+        {/* Top Right - Navigation */}
+        <div className="relative z-10 border-b border-l border-white/20 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-start gap-1.5 md:gap-2.5">
+             {['About', 'Work', 'Contact'].map((item, idx) => (
+                <a 
+                  key={item} 
+                  href="#" 
+                  className={`text-[8px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em] font-bold uppercase transition-opacity flex items-center gap-1.5 md:gap-2 group text-white mix-blend-difference ${
+                    idx === 0 ? 'opacity-100' : 'opacity-60 hover:opacity-100'
+                  }`}
+                >
+                    <div className={`h-[1px] bg-white transition-all ${idx === 0 ? 'w-2 md:w-3' : 'w-0 group-hover:w-2 md:group-hover:w-3'}`} />
+                    <span>{item}</span>
+                </a>
+             ))}
+          </div>
+        </div>
+
+        {/* Center Left - Social Media */}
+        <div className="relative z-10 border-r border-white/20 flex flex-col items-center justify-center gap-8 md:gap-10">
+          {[
+            { Icon: Dribbble, label: 'Dribbble' },
+            { Icon: Instagram, label: 'Instagram' },
+            { Icon: Play, label: 'Play', className: 'fill-current' },
+            { Icon: Linkedin, label: 'LinkedIn' }
+          ].map(({ Icon, label, className }) => (
+            <a 
+              key={label}
+              href="#" 
+              aria-label={label}
+              className="text-white mix-blend-difference opacity-60 hover:opacity-100 transition-all hover:scale-110"
+            >
+              <Icon className={`w-4 h-4 md:w-5 md:h-5 ${className || ''}`} strokeWidth={2} />
+            </a>
+          ))}
+        </div>
+
+        {/* Center Main - Blank Area */}
+        <div className="relative z-10 flex items-center justify-center group cursor-crosshair mix-blend-difference px-10 py-10">
+          {/* Inner flexible wrapper for animations without breaking grid */}
+          <div className="relative w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-95 group-active:rotate-[45deg]">
+            <div className="absolute top-1/4 left-1/4 w-3 h-3 md:w-4 md:h-4 border-l-[2px] border-t-[2px] border-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:translate-x-4 group-active:translate-y-4" />
+            <div className="absolute top-1/4 right-1/4 w-3 h-3 md:w-4 md:h-4 border-r-[2px] border-t-[2px] border-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:-translate-x-4 group-active:translate-y-4" />
+            <div className="absolute bottom-1/4 left-1/4 w-3 h-3 md:w-4 md:h-4 border-l-[2px] border-b-[2px] border-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:translate-x-4 group-active:-translate-y-4" />
+            <div className="absolute bottom-1/4 right-1/4 w-3 h-3 md:w-4 md:h-4 border-r-[2px] border-b-[2px] border-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:-translate-x-4 group-active:-translate-y-4" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-[2px] bg-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:scale-[0.2]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-2 bg-white/80 transition-all duration-300 opacity-50 group-hover:opacity-100 group-active:scale-[0.2]" />
+          </div>
+        </div>
+
+        {/* Center Right - Blank Area */}
+        <div className="relative z-10 border-l border-white/20 flex items-center justify-center">
+        </div>
+
+        {/* Bottom Left - Corner Detailing */}
+        <div className="relative z-10 border-t border-r border-white/20 flex items-center justify-center">
+           <div className="w-1.5 h-1.5 bg-white mix-blend-difference opacity-50 rounded-sm transform rotate-45" />
+        </div>
+
+        {/* Bottom Center - Empty / Subtle Detail */}
+        <div className="relative z-10 border-t border-white/20 flex items-center justify-center mix-blend-difference">
+           <div className="w-[100px] h-[1px] bg-white opacity-40" />
+        </div>
+
+         {/* Bottom Right - Sound (Moved to fixed) */}
+         <div className="relative z-10 border-t border-l border-white/20" />
+
       </div>
-
-      {/* Center Right - Blank Area */}
-      <div className="bg-black relative overflow-hidden flex items-center justify-center">
-      </div>
-
-      {/* Bottom Left - Corner Detailing */}
-      <div className="bg-black flex items-center justify-center">
-         <div className="w-1.5 h-1.5 bg-[#1c1c1c] rounded-sm transform rotate-45" />
-      </div>
-
-      {/* Bottom Center - Empty / Subtle Detail */}
-      <div className="bg-black flex items-center justify-center">
-         <div className="w-[100px] h-[1px] bg-[#1c1c1c]" />
-      </div>
-
-       {/* Bottom Right - Sound (Moved to fixed) */}
-       <div className="bg-black" />
-
-    </div>
 
       {/* ABOUT SECTION */}
       <div className="w-full bg-[#1c1c1c] grid grid-cols-[75px_1fr_75px] md:grid-cols-[115px_1fr_115px] auto-rows-auto gap-[1px]">
@@ -345,7 +407,7 @@ export default function App() {
              <div className="relative bg-black pt-16 pb-16 lg:pt-32 lg:pb-24 px-8 md:px-16 lg:px-20 flex flex-col gap-10 md:gap-16 group transition-all duration-500 hover:bg-[#050505] min-h-[600px] lg:min-h-[800px] overflow-hidden">
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                  <img src="https://lh3.googleusercontent.com/d/1sZ_Obja968M4uzvmf73XMWwHPclIRn62" referrerPolicy="no-referrer" className="w-full h-full object-cover object-center grayscale opacity-25 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt="Raw Concept" />
+                  <img src="https://raw.githubusercontent.com/kupicake/database/main/raw%20concept.webp" referrerPolicy="no-referrer" className="w-full h-full object-cover object-center grayscale opacity-25 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt="Raw Concept" />
                   <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-transparent"></div>
                 </div>
                 
@@ -360,7 +422,7 @@ export default function App() {
                   Transforming abstract ideas into structured blueprints, from clean vector logo design to initial layout concepts.
                 </div>
                 <div className="mt-auto flex justify-start items-end pt-12 relative z-10">
-                  <div className="text-[#3a3a3a] font-normal text-3xl md:text-5xl xl:text-[68px] leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">01</div>
+                  <div className="text-white/50 font-normal text-3xl md:text-4xl xl:text-5xl leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">01</div>
                 </div>
              </div>
 
@@ -368,7 +430,7 @@ export default function App() {
              <div className="relative bg-black pt-16 pb-16 lg:pt-32 lg:pb-24 px-8 md:px-16 lg:px-20 flex flex-col gap-10 md:gap-16 group transition-all duration-500 hover:bg-[#050505] min-h-[600px] lg:min-h-[800px] overflow-hidden">
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
-                  <img src="https://lh3.googleusercontent.com/d/1CVJlknKSjB6ZcdPIH8dSduU3ifJnM54P" referrerPolicy="no-referrer" className="w-full h-full object-cover object-center grayscale opacity-25 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt="Full Illustration" />
+                  <img src="https://raw.githubusercontent.com/kupicake/database/main/full%20illustration.webp" referrerPolicy="no-referrer" className="w-full h-full object-cover object-center grayscale opacity-25 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt="Full Illustration" />
                   <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-transparent"></div>
                 </div>
 
@@ -383,18 +445,27 @@ export default function App() {
                   Building rich, immersive worlds, detailed character designs, and full publication layouts.
                 </div>
                 <div className="mt-auto flex justify-start items-end pt-12 relative z-10">
-                  <div className="text-[#3a3a3a] font-normal text-3xl md:text-5xl xl:text-[68px] leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">02</div>
+                  <div className="text-white/50 font-normal text-3xl md:text-4xl xl:text-5xl leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">02</div>
                 </div>
              </div>
 
              {/* Box 3 */}
-             <div className="relative bg-black pt-16 pb-16 lg:pt-32 lg:pb-24 px-8 md:px-16 lg:px-20 flex flex-col gap-10 md:gap-16 group transition-all duration-500 hover:bg-[#050505] min-h-[600px] lg:min-h-[800px] overflow-hidden">
+             <div 
+               className="relative bg-black pt-16 pb-16 lg:pt-32 lg:pb-24 px-8 md:px-16 lg:px-20 flex flex-col gap-10 md:gap-16 group transition-all duration-500 hover:bg-[#050505] min-h-[600px] lg:min-h-[800px] overflow-hidden"
+               onMouseEnter={(e) => {
+                 const video = e.currentTarget.querySelector('video');
+                 if (video) video.play();
+               }}
+               onMouseLeave={(e) => {
+                 const video = e.currentTarget.querySelector('video');
+                 if (video) video.pause();
+               }}
+             >
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
                   <video 
-                    src="https://drive.google.com/uc?export=download&id=1IS9mfxhpCFZBbnWNimJXwH5xtIrGViOV" 
+                    src="https://raw.githubusercontent.com/kupicake/database/main/3.animasi_fin.webm" 
                     className="w-full h-full object-cover object-center absolute inset-0 grayscale opacity-25 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none" 
-                    autoPlay 
                     loop 
                     muted 
                     playsInline 
@@ -414,7 +485,7 @@ export default function App() {
                   Breathing movement into static artwork through traditional frame-by-frame loops and dynamic motion sequences.
                 </div>
                 <div className="mt-auto flex justify-start items-end pt-12 relative z-10">
-                  <div className="text-[#3a3a3a] font-normal text-3xl md:text-5xl xl:text-[68px] leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">03</div>
+                  <div className="text-white/50 font-normal text-3xl md:text-4xl xl:text-5xl leading-[1.05] md:leading-[1.1] tracking-tight group-hover:text-[#F05C3B] transition-colors duration-500 select-none">03</div>
                 </div>
              </div>
            </div>
