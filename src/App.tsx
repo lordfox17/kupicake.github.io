@@ -14,6 +14,7 @@ export default function App() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isFullyLoaded, setIsFullyLoaded] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [windowHeight, setWindowHeight] = useState(0);
@@ -27,7 +28,7 @@ export default function App() {
   useEffect(() => {
     let currentProgress = 0;
     const interval = setInterval(() => {
-      currentProgress += Math.floor(Math.random() * 15) + 5;
+      currentProgress += Math.floor(Math.random() * 4) + 1;
       if (currentProgress >= 100) {
         currentProgress = 100;
         setLoadingProgress(currentProgress);
@@ -168,6 +169,15 @@ export default function App() {
     aboutTitleProgress = Math.max(0, Math.min(1, (startY - rect.top) / (startY - endY)));
   }
 
+  const principleTitleRef = useRef<HTMLHeadingElement>(null);
+  let principleTitleProgress = 0;
+  if (principleTitleRef.current && windowHeight > 0) {
+    const rect = principleTitleRef.current.getBoundingClientRect();
+    const startY = windowHeight * 0.9;
+    const endY = windowHeight * 0.3;
+    principleTitleProgress = Math.max(0, Math.min(1, (startY - rect.top) / (startY - endY)));
+  }
+
   const aboutRef = useRef<HTMLParagraphElement>(null);
   let scrollProgress = 0;
   if (aboutRef.current && windowHeight > 0) {
@@ -175,6 +185,15 @@ export default function App() {
     const startY = windowHeight * 0.9;
     const endY = windowHeight * 0.3;
     scrollProgress = Math.max(0, Math.min(1, (startY - rect.top) / (startY - endY)));
+  }
+
+  const principleRef = useRef<HTMLParagraphElement>(null);
+  let principleProgress = 0;
+  if (principleRef.current && windowHeight > 0) {
+    const rect = principleRef.current.getBoundingClientRect();
+    const startY = windowHeight * 0.9;
+    const endY = windowHeight * 0.3;
+    principleProgress = Math.max(0, Math.min(1, (startY - rect.top) / (startY - endY)));
   }
 
   const whatIDoRef = useRef<HTMLHeadingElement>(null);
@@ -185,6 +204,30 @@ export default function App() {
     const endY = windowHeight * 0.3;
     whatIDoProgress = Math.max(0, Math.min(1, (startY - rect.top) / (startY - endY)));
   }
+
+  const principleWords1 = [
+    { w: "Design", h: true },
+    { w: "with", h: true },
+    { w: "intent,", h: true },
+    { w: "animate", h: true },
+    { w: "with", h: true },
+    { w: "soul.", h: true },
+  ];
+  const principleWords2 = [
+    { w: "I", h: false },
+    { w: "believe", h: false },
+    { w: "that", h: false },
+    { w: "every", h: false },
+    { w: "art", h: false },
+    { w: "should", h: false },
+    { w: "serve", h: false },
+    { w: "a", h: false },
+    { w: "purpose", h: false },
+    { w: "and", h: false },
+    { w: "evoke", h: false },
+    { w: "a", h: false },
+    { w: "feeling.", h: false }
+  ];
 
   const aboutWords = [
     { w: "I", h: false },
@@ -217,21 +260,30 @@ export default function App() {
       {!isFullyLoaded && (
         <div 
           onClick={() => {
-            if (loadingProgress === 100) {
-              setIsFullyLoaded(true);
+            if (loadingProgress === 100 && !isExiting) {
+              setIsExiting(true);
               setHasInteracted(true);
               if (isSoundOn && audioRef.current) {
                 audioRef.current.play().catch(() => {});
               }
+              setTimeout(() => {
+                setIsFullyLoaded(true);
+              }, 2000);
             }
           }}
-          className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black text-[#E8E6E3] transition-opacity duration-1000 ease-out ${loadingProgress === 100 ? 'cursor-pointer' : ''}`}
+          className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-1000 delay-1000 ${loadingProgress === 100 && !isExiting ? 'cursor-pointer' : ''} ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
-          <div className="font-mono text-4xl md:text-6xl font-light tracking-widest flex items-baseline relative">
+          {/* Base Black Background */}
+          <div className="absolute inset-0 bg-black -z-20" />
+          
+          {/* White Dazzle Flash */}
+          <div className={`absolute inset-0 transition-all duration-[1000ms] ${isExiting ? 'opacity-100 bg-white' : 'opacity-0 bg-transparent'} -z-10`} />
+
+          <div className={`font-mono text-4xl md:text-6xl font-light tracking-widest flex items-baseline relative transition-all duration-[1000ms] ${isExiting ? 'opacity-0 scale-[2.0] blur-xl' : 'opacity-100 scale-100 blur-0'} text-[#E8E6E3]`}>
             <span className="w-24 md:w-32 text-right">{loadingProgress}</span>
             <span className="text-[#F05C3B] text-2xl md:text-3xl">%</span>
           </div>
-          <div className={`absolute bottom-20 mt-12 text-[#8C8A87] font-mono text-xs tracking-widest uppercase transition-opacity duration-1000 ease-in-out ${loadingProgress === 100 ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`absolute bottom-20 mt-12 text-[#8C8A87] font-mono text-xs tracking-widest uppercase transition-opacity duration-500 ease-in-out ${(loadingProgress === 100 && !isExiting) ? 'opacity-100 animate-pulse' : 'opacity-0 pointer-events-none'}`}>
             Click to Enter
           </div>
         </div>
@@ -599,6 +651,83 @@ export default function App() {
 
         {/* Right Grid Margin */}
         <div className="bg-black col-start-3 col-end-4 row-start-1" />
+      </div>
+
+      {/* MY PRINCIPLE SECTION */}
+      <div className="w-full bg-[#1c1c1c] grid grid-cols-[75px_1fr_75px] lg:grid-cols-[115px_1fr_115px] auto-rows-auto gap-[1px]">
+        
+        {/* Left Grid Margin */}
+        <div className="bg-black col-start-1 col-end-2 row-start-1" />
+        
+        {/* Center Content */}
+        <div className="bg-black col-start-2 col-end-3 row-start-1 pt-40 lg:pt-64 pb-48 lg:pb-64 px-8 md:px-12 lg:px-24 flex flex-col justify-center items-start">
+          <h2 ref={principleTitleRef} className="font-bold text-xs md:text-sm tracking-[0.4em] md:tracking-[0.6em] uppercase mb-12 md:mb-16">
+            <span 
+              style={{
+                backgroundImage: `linear-gradient(to right, #D1CFC9 ${Math.min(100, principleTitleProgress * 100)}%, #5A5957 ${Math.min(100, principleTitleProgress * 100)}%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                color: 'transparent'
+              }}
+            >
+              MY PRINCIPLE
+            </span>
+          </h2>
+          <p ref={principleRef} className="flex flex-col gap-6 md:gap-8 items-start max-w-5xl">
+            <span className="text-2xl md:text-4xl xl:text-[52px] font-bold leading-[1.1] md:leading-[1.15] tracking-tight">
+              {principleWords1.map((word, i) => {
+                 const totalWords = principleWords1.length + principleWords2.length;
+                 const fillPercentage = Math.max(0, Math.min(100, (principleProgress * totalWords - i) * 100));
+                 const targetColor = word.h ? '#F05C3B' : '#D1CFC9';
+                 return (
+                    <span key={i}>
+                      <span 
+                        style={{
+                          backgroundImage: `linear-gradient(to right, ${targetColor} ${fillPercentage}%, #5A5957 ${fillPercentage}%)`,
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          color: 'transparent'
+                        }}
+                      >
+                        {word.w}
+                      </span>
+                      {i < principleWords1.length - 1 && ' '}
+                    </span>
+                 );
+              })}
+            </span>
+            <span className="text-xl md:text-2xl xl:text-3xl font-medium leading-[1.3] tracking-tight text-[#8C8A87]">
+              {principleWords2.map((word, i) => {
+                 const totalWords = principleWords1.length + principleWords2.length;
+                 const globalIndex = i + principleWords1.length;
+                 const fillPercentage = Math.max(0, Math.min(100, (principleProgress * totalWords - globalIndex) * 100));
+                 const targetColor = word.h ? '#F05C3B' : '#D1CFC9';
+                 return (
+                    <span key={globalIndex}>
+                      <span 
+                        style={{
+                          backgroundImage: `linear-gradient(to right, ${targetColor} ${fillPercentage}%, #5A5957 ${fillPercentage}%)`,
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          color: 'transparent'
+                        }}
+                      >
+                        {word.w}
+                      </span>
+                      {i < principleWords2.length - 1 && ' '}
+                    </span>
+                 );
+              })}
+            </span>
+          </p>
+        </div>
+
+        {/* Right Grid Margin */}
+        <div className="bg-black col-start-3 col-end-4 row-start-1" />
+
       </div>
 
       {/* --- Section 4: My Work --- */}
